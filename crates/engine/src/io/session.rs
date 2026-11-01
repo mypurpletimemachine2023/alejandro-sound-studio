@@ -1,4 +1,4 @@
-use super::bundle::save_session_bundle;
+use super::bundle::{save_session_bundle, save_session_bundle_copy};
 #[cfg(test)]
 use super::import::add_source;
 use super::import::{MAX_IMPORT_SAMPLES, at_rate, relink_videos};
@@ -32,6 +32,9 @@ pub fn save_copy(e: &Engine, path: &str) -> Result<usize> {
 /// File › Save Session Copy In: a normal session folder that does not rename, retarget or
 /// clean the session that stays open.
 pub fn save_session_copy(e: &Engine, path: &str) -> Result<usize> {
+    if cfg!(target_arch = "wasm32") {
+        return save_session_bundle_copy(e, path);
+    }
     write_session(e.session(), path, false).map(|(_, n, _)| n)
 }
 

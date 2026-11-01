@@ -209,3 +209,6 @@ mutated and truncated movies. Field reports from the first public week are track
 | 2026-10-10 | major | Progress docs restructured: stage alpha (re-normalized the same day), two numbers (breadth ~70 %, ready ~40 %), dimension/feature/language tables, hours re-calibrated; area table moved to docs/target-app-parity.md, milestones to docs/roadmap.md |
 | 2026-10-07 | major | Menu parity 94 %, ~65 % estimated feature parity, alpha list |
 | 2026-10-06 | minor | Alpha and parity estimates |
+# Academy fork compatibility note — 2026-11-01
+
+Scoped browser follow-up: self-contained Save Session Copy In and in-memory Revert to Saved replace two native-filesystem-only paths. Original upstream parity figures below remain historical; these fixes are not a new parity or browser-certification claim. See `ACA_FORK.md` for current scope and test boundaries.

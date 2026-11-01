@@ -6,7 +6,7 @@
   "branch": "codex/academy-purple-gold",
   "license": "MIT OR Apache-2.0",
   "internalIdentifiersPreserved": true,
-  "status": "Implemented source fork; manual Academy WASM build pending. Full upstream CI and browser behavior not yet verified.",
+  "status": "Browser Save Copy and Revert compatibility follow-up implemented; focused cloud tests and new WASM release are separate pending gates at this source state.",
   "colors": {
     "purple": "#160f24",
     "surface": "#241934",

@@ -318,6 +318,17 @@ impl Engine {
         self.saved = Arc::clone(&self.doc);
     }
 
+    /// Restore the last successfully opened or saved document on a host without a filesystem.
+    /// The immutable checkpoint shares decoded audio, rather than retaining another encoded
+    /// bundle. New/close clears the path, so an unsaved session cannot revert to another one.
+    pub fn restore_saved_session(&mut self) -> Result<()> {
+        if self.path.is_none() {
+            return Err(EngineError::Io("the session has not been saved".into()));
+        }
+        self.replace_session(self.saved.as_ref().clone());
+        Ok(())
+    }
+
     pub fn can_undo(&self) -> bool {
         !self.undo.is_empty()
     }

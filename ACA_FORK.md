@@ -18,3 +18,8 @@ Do not publish the upstream installers as rebranded Academy binaries or claim up
 The fork-only `Academy WASM build` workflow is manual (`workflow_dispatch`) and uses two sequential jobs on standard public Ubuntu runners. It builds this modified source with Rust1.95 and wasm-bindgen0.2.129; it performs no signing, deployment, or desktop release matrix and reads no user secrets. Browser verification and upstream full-suite CI remain separate gates.
 
 Source: https://github.com/mypurpletimemachine2023/alejandro-sound-studio
+# Browser save compatibility follow-up — 2026-11-01
+
+Save Session Copy In now delivers the same self-contained `.scraftz` bundle as normal browser saving, while leaving the working session, path, dirty flag and undo history unchanged. Revert to Saved restores the Engine's existing immutable last-opened/last-successfully-saved session checkpoint, including shared decoded audio, instead of trying to read a downloaded file through the unavailable native filesystem. The existing dirty confirmation and Cancel behavior remain. Native disk-based save/revert behavior is unchanged.
+
+Focused regression tests cover embedded-audio copy reopening, failed delivery, dirty/path/history isolation, loaded and saved checkpoint restoration, audio sharing and rejecting revert after a new unsaved session. A separate manual Academy workflow job runs these tests on a standard hosted runner; WASM compilation and later browser interaction are separate evidence. Full upstream CI is not claimed by these scoped checks.

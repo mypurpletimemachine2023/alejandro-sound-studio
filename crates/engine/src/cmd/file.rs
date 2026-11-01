@@ -53,6 +53,10 @@ pub fn specs() -> Vec<CommandSpec> {
             Ok(json!({"path": file}))
         }),
         cmd!(noundo "session.revert", "Revert Session to Saved...", ["File"], None, "{}", |e| if e.path.is_some() { Ok(()) } else { Err("the session has not been saved".into()) }, |e, _| {
+            if cfg!(target_arch = "wasm32") {
+                e.restore_saved_session()?;
+                return Ok(json!({}));
+            }
             let path = e.path.clone().ok_or_else(|| bad("session.revert", "the session has not been saved"))?;
             crate::io::open_session(e, &path)?;
             Ok(json!({}))

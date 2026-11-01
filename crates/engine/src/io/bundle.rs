@@ -78,6 +78,19 @@ fn session_bundle_within(session: &Session, limits: BundleLimits) -> Result<(Vec
 
 /// Save as a bundle named after `path`'s file name, delivered through the host ([`write_file`]).
 pub(super) fn save_session_bundle(e: &mut Engine, path: &str) -> Result<usize> {
+    let (fresh, file, written) = deliver_session_bundle(e, path, write_file)?;
+    *e.session_mut() = fresh;
+    e.path = Some(file);
+    e.mark_clean();
+    Ok(written)
+}
+
+/// Deliver a self-contained copy without renaming, cleaning or changing the open session.
+pub(super) fn save_session_bundle_copy(e: &Engine, path: &str) -> Result<usize> {
+    deliver_session_bundle(e, path, write_file).map(|(_, _, written)| written)
+}
+
+fn deliver_session_bundle(e: &Engine, path: &str, deliver: impl FnOnce(&str, &[u8]) -> Result<()>) -> Result<(Session, String, usize)> {
     let stem = Path::new(path).file_stem().and_then(OsStr::to_str).filter(|x| !x.is_empty()).map(str::to_string);
     let mut s = e.session().clone();
     if let Some(stem) = stem {
@@ -85,12 +98,9 @@ pub(super) fn save_session_bundle(e: &mut Engine, path: &str) -> Result<usize> {
     }
     let (bytes, fresh) = session_bundle(&s)?;
     let file = format!("{}.{BUNDLE_EXTENSION}", sanitize_name(&fresh.name));
-    write_file(&file, &bytes)?;
+    deliver(&file, &bytes)?;
     let written = fresh.sources.iter().filter(|x| fresh.pool.get(x.id).is_some()).count();
-    *e.session_mut() = fresh;
-    e.path = Some(file);
-    e.mark_clean();
-    Ok(written)
+    Ok((fresh, file, written))
 }
 
 /// Open a session from bytes (the browser has no paths): a bundle ([`session_bundle`]) or a bare
@@ -148,6 +158,80 @@ pub fn open_session_bytes(e: &mut Engine, name: &str, bytes: &[u8]) -> Result<Ve
 #[cfg(test)]
 mod bundle_tests {
     use super::*;
+
+    #[test]
+    fn browser_save_copy_round_trips_audio_without_changing_the_working_session() {
+        let mut e = crate::demo::demo_engine();
+        e.path = Some("Original.scraftz".into());
+        e.mark_clean();
+        e.execute("mix.volume", &serde_json::json!({"track": "Kick", "db": -13.0})).unwrap();
+        let before = e.session().to_json().unwrap();
+        let revision = e.revision;
+        let history = e.undo_label().map(str::to_string);
+        let mut output = None;
+        let (_, name, written) = deliver_session_bundle(&e, "QA Copy.scraftz", |name, bytes| {
+            output = Some((name.to_string(), bytes.to_vec()));
+            Ok(())
+        })
+        .unwrap();
+        assert_eq!(name, "QA Copy.scraftz");
+        assert!(written > 0);
+        assert_eq!(e.path.as_deref(), Some("Original.scraftz"));
+        assert_eq!(e.session().to_json().unwrap(), before);
+        assert_eq!(e.revision, revision);
+        assert_eq!(e.undo_label(), history.as_deref());
+        assert!(e.is_dirty());
+        let (name, bytes) = output.unwrap();
+        let mut reopened = Engine::default();
+        assert!(open_session_bytes(&mut reopened, &name, &bytes).unwrap().is_empty());
+        assert_eq!(reopened.session().name, "QA Copy");
+        assert_eq!(reopened.session().track_by_name("Kick").unwrap().mixer.volume_db, -13.0);
+        for source in &e.session().sources {
+            let (a, b) = (e.session().pool.get(source.id).unwrap(), reopened.session().pool.get(source.id).unwrap());
+            assert_eq!(a.buffer.channels, b.buffer.channels);
+        }
+        let result = deliver_session_bundle(&e, "Failed Copy.scraftz", |_, _| Err(EngineError::Io("delivery failed".into())));
+        assert!(result.is_err());
+        assert_eq!(e.session().to_json().unwrap(), before);
+        assert_eq!(e.path.as_deref(), Some("Original.scraftz"));
+        assert_eq!(e.revision, revision);
+        assert!(e.is_dirty());
+    }
+
+    #[test]
+    fn browser_revert_restores_loaded_checkpoint_and_clears_history_without_rereading_files() {
+        let demo = crate::demo::demo_engine();
+        let (bytes, _) = session_bundle(demo.session()).unwrap();
+        let mut e = Engine::default();
+        assert!(open_session_bytes(&mut e, "Loaded.scraftz", &bytes).unwrap().is_empty());
+        let before = e.session().to_json().unwrap();
+        let source = e.session().sources.first().unwrap().id;
+        let audio = Arc::clone(e.session().pool.get(source).unwrap());
+        e.execute("mix.volume", &serde_json::json!({"track": "Kick", "db": -23.0})).unwrap();
+        assert!(e.is_dirty() && e.can_undo());
+        e.restore_saved_session().unwrap();
+        assert_eq!(e.session().to_json().unwrap(), before);
+        assert_eq!(e.path.as_deref(), Some("Loaded.scraftz"));
+        assert!(Arc::ptr_eq(&audio, e.session().pool.get(source).unwrap()));
+        assert!(!e.is_dirty() && !e.can_undo() && !e.can_redo());
+        assert!(!e.transport.playing && !e.transport.recording);
+        e.execute("session.new", &serde_json::json!({"name": "New unsaved"})).unwrap();
+        let new_session = e.session().to_json().unwrap();
+        assert!(e.restore_saved_session().is_err());
+        assert_eq!(e.session().to_json().unwrap(), new_session);
+    }
+
+    #[test]
+    fn browser_revert_uses_the_latest_successful_saved_checkpoint() {
+        let mut e = crate::demo::demo_engine();
+        e.path = Some("Saved.scraftz".into());
+        e.execute("mix.volume", &serde_json::json!({"track": "Kick", "db": -17.0})).unwrap();
+        e.mark_clean();
+        e.execute("mix.volume", &serde_json::json!({"track": "Kick", "db": -29.0})).unwrap();
+        e.restore_saved_session().unwrap();
+        assert_eq!(e.session().track_by_name("Kick").unwrap().mixer.volume_db, -17.0);
+        assert!(!e.is_dirty());
+    }
 
     #[test]
     fn bundle_round_trips_session_and_audio() {
