@@ -31,8 +31,8 @@ impl NativeMenu {
         let menu = Menu::new();
         let (tx, events) = channel();
         let mut native = Self { menu, entries: Vec::new(), events, last_sync: None };
-        let app_menu = Submenu::new("SoundCraft", true);
-        native.add_item(app, &app_menu, "About SoundCraft", "", Some("window.about".into()))?;
+        let app_menu = Submenu::new("ACA Sound Studio", true);
+        native.add_item(app, &app_menu, "About ACA Sound Studio", "", Some("window.about".into()))?;
         native.add_item(app, &app_menu, "Session Info", "", Some("window.session_info".into()))?;
         native.add_item(app, &app_menu, "Session Audio Health", "", Some("window.audio_health".into()))?;
         app_menu.append(&PredefinedMenuItem::separator())?;

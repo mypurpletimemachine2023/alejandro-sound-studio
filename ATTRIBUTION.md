@@ -39,14 +39,6 @@ here. The subset uses default_fonts; the parent face uses monochrome_emoji_fonts
 
 | Path | Author | Source | License |
 |---|---|---|---|
-| `docs/brand/artcraft-logo.svg` | ArtCraft Team | ArtCraft brand assets | ArtCraft brand terms (`docs/brand/LICENSE-brand.txt`) |
-| `docs/brand/artcraft-logo.png` | ArtCraft Team | ArtCraft brand assets | ArtCraft brand terms |
-| `docs/brand/artcraft-logo-white.svg` | ArtCraft Team | ArtCraft brand assets | ArtCraft brand terms |
-| `docs/brand/artcraft-logo-white.png` | ArtCraft Team | ArtCraft brand assets | ArtCraft brand terms |
-| `docs/brand/artcraft-mark.svg` | ArtCraft Team | ArtCraft brand assets | ArtCraft brand terms |
-| `docs/brand/artcraft-mark.png` | ArtCraft Team | ArtCraft brand assets | ArtCraft brand terms |
-| `docs/brand/artcraft-mark-black.svg` | ArtCraft Team | ArtCraft brand assets | ArtCraft brand terms |
-| `docs/brand/artcraft-mark-black.png` | ArtCraft Team | ArtCraft brand assets | ArtCraft brand terms |
 | `assets/app-icon/icon.svg` | SoundCraft contributors | original (hand-placed SVG paths; placeholder app icon) | MIT OR Apache-2.0 |
 | `packaging/macos/dmg/` (all files) | @XusBadia | original (macOS DMG window background and layout, from the app icon; see `packaging/macos/dmg/README.md`) | MIT OR Apache-2.0 |
 | `assets/app-icon/soundcraft-1024.png` | SoundCraft contributors | original, rendered from `icon.svg` | MIT OR Apache-2.0 |
@@ -56,3 +48,8 @@ here. The subset uses default_fonts; the parent face uses monochrome_emoji_fonts
 | `assets/app-icon/hicolor/` | SoundCraft contributors | original, rendered from `icon.svg` (16–512 px PNGs and the scalable SVG) | MIT OR Apache-2.0 |
 | `docs/images/` | SoundCraft contributors | screenshots of SoundCraft rendered from the synthesised demo session | MIT OR Apache-2.0 |
 | `crates/audio-io/tests/fixtures/` | SoundCraft contributors | original test tones and silence generated with ffmpeg (sine) or by hand; commands in `crates/audio-io/tests/fixtures/README.md` | MIT OR Apache-2.0 |
+
+ACA derivative: the ArtCraft trademark artwork under docs/brand has been excluded. ACA marks are original text/geometry drawn in code; copyright and other dependency notices are retained.
+| `aca_build_web.py` generated `dist/web/favicon.svg` | ACA fork contributors | original procedural waveform geometry | MIT OR Apache-2.0 |
+
+| `apps/soundcraft-web/index.html` inline ACA favicon | ACA fork contributors | Original procedural SVG geometry and system type | MIT OR Apache-2.0 |

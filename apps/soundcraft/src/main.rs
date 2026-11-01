@@ -83,13 +83,13 @@ impl eframe::App for App {
         // title carries them; elsewhere the egui menu bar already does.
         let title = if self.0.native_menu_bar {
             format!(
-                "{}{} — SoundCraft — {}",
+                "{}{} — ACA Sound Studio — {}",
                 self.0.engine.session().name,
                 if self.0.engine.is_dirty() { " *" } else { "" },
                 if self.0.ui.window == soundcraft_ui_egui::MainWindow::Edit { "Edit" } else { "Mix" }
             )
         } else {
-            format!("{} — SoundCraft", self.0.engine.session().name)
+            format!("{} — ACA Sound Studio", self.0.engine.session().name)
         };
         set_title(ctx, title);
     }
@@ -221,7 +221,7 @@ fn main() -> eframe::Result {
     let prefs = load_prefs(&env).unwrap_or_default();
     let mut options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_title("SoundCraft")
+            .with_title("ACA Sound Studio")
             .with_inner_size(sane_window_size(prefs.window_size))
             .with_maximized(prefs.window_maximized)
             .with_min_inner_size([960.0, 600.0])
@@ -306,8 +306,8 @@ mod tests {
             out.textures_delta.clear();
             out.viewport_output.values().flat_map(|v| &v.commands).filter(|c| matches!(c, egui::ViewportCommand::Title(_))).count()
         };
-        assert_eq!(titles("Song — SoundCraft"), 1);
-        assert_eq!(titles("Song — SoundCraft"), 0);
-        assert_eq!(titles("Song * — SoundCraft"), 1);
+        assert_eq!(titles("Song — ACA Sound Studio"), 1);
+        assert_eq!(titles("Song — ACA Sound Studio"), 0);
+        assert_eq!(titles("Song * — ACA Sound Studio"), 1);
     }
 }
