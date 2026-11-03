@@ -51,6 +51,8 @@ jobs:
         run: |
           rustc --edition 2024 --test crates/ui-egui/src/compact_policy.rs -o "$RUNNER_TEMP/academy-compact-policy"
           "$RUNNER_TEMP/academy-compact-policy"
+          rustc --edition 2024 --test apps/soundcraft-web/src/import_queue.rs -o "$RUNNER_TEMP/academy-import-queue"
+          "$RUNNER_TEMP/academy-import-queue"
   build-web:
     needs: source-audit
     runs-on: ubuntu-24.04
