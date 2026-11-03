@@ -81,6 +81,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 -m unittest test_aca_packaging.py
+          node --test test-academy-bootstrap.mjs
           python3 aca_build_web.py
       - name: Include licenses and exact source identity
         shell: bash

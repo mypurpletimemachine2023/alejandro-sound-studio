@@ -15,8 +15,9 @@ def browser_html(html):
     html=re.sub(r'<link data-trunk rel="icon"[^>]+>','<link rel="icon" type="image/svg+xml" href="favicon.svg">',html)
     return html.replace('</body>','''<script type="module">
 import init, * as bindings from './soundcraft_web.js';
-window.wasmBindings = bindings;
-init({module_or_path: './soundcraft_web_bg.wasm'}).catch(error => {
+init({module_or_path: './soundcraft_web_bg.wasm'}).then(() => {
+  window.wasmBindings = bindings;
+}).catch(error => {
   const el=document.getElementById('soundcraft_loading');
   if(el){el.textContent='ACA Audio Lab could not start: '+error;el.style.pointerEvents='auto';}
 });
