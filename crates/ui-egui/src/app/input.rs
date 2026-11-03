@@ -4,6 +4,7 @@ impl SoundApp {
     /// Feed queued synthetic input (from the control channel) into egui: one pointer event per
     /// frame (so drags span frames like real ones), keys as press+release pairs, text at once.
     pub fn raw_input_hook(&mut self, ctx: &egui::Context, raw: &mut egui::RawInput) {
+        crate::compact::raw_input(self, ctx, raw);
         self.editor_poll_due = true;
         self.note_host_geometry(ctx, raw);
         // Expire before injecting: a gesture that can no longer reach a UI pass must not put one

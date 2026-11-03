@@ -172,6 +172,21 @@ struct HistoryEntry {
     doc: Arc<Session>,
 }
 
+/// A bounded, copy-on-write checkpoint for an interrupted UI gesture. Decoded audio stays shared.
+/// It is transient and never serialized into a session or a browser project.
+pub struct InteractionCheckpoint {
+    doc: Arc<Session>,
+    undo: Vec<HistoryEntry>,
+    redo: Vec<HistoryEntry>,
+    dirty: bool,
+    merge_key: Option<String>,
+    merge_hold: Option<String>,
+    last_selection: Option<(soundcraft_time::Range, Vec<TrackId>)>,
+}
+
+#[cfg(test)]
+mod browser_interaction_tests;
+
 /// Most decoded imports [`Engine::offer_import`] holds at once (each can be gigabytes).
 const MAX_OFFERED_IMPORTS: usize = 4;
 
@@ -270,6 +285,33 @@ impl Engine {
 
     pub fn session_arc(&self) -> Arc<Session> {
         Arc::clone(&self.doc)
+    }
+
+    /// Capture document and both history branches before a touch gesture can make eager edits.
+    pub fn interaction_checkpoint(&self) -> InteractionCheckpoint {
+        InteractionCheckpoint {
+            doc: Arc::clone(&self.doc),
+            undo: self.undo.clone(),
+            redo: self.redo.clone(),
+            dirty: self.dirty,
+            merge_key: self.merge_key.clone(),
+            merge_hold: self.merge_hold.clone(),
+            last_selection: self.last_selection.clone(),
+        }
+    }
+
+    /// Cancel only the gesture's document edits; transport and the last saved checkpoint stay owned
+    /// by their existing systems. The host must discard this checkpoint on document replacement.
+    pub fn cancel_interaction(&mut self, checkpoint: InteractionCheckpoint) {
+        self.doc = checkpoint.doc;
+        self.undo = checkpoint.undo;
+        self.redo = checkpoint.redo;
+        self.dirty = checkpoint.dirty;
+        self.merge_key = checkpoint.merge_key;
+        self.merge_hold = checkpoint.merge_hold;
+        self.last_selection = checkpoint.last_selection;
+        self.revision = self.revision.wrapping_add(1);
+        self.dirty_at.set((0, false));
     }
 
     /// Mutable access (copy-on-write). Callers outside commands should prefer `execute`.

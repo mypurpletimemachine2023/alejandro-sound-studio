@@ -14,6 +14,8 @@ pub const UPDATE_APP: craft_update::app::App = craft_update::app::App {
 };
 
 pub mod appearance;
+pub mod compact;
+mod compact_policy;
 pub mod bounce;
 pub mod control;
 pub mod credits;
@@ -69,6 +71,8 @@ pub use state::{DragSource, MainWindow};
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(default)]
 pub struct UiState {
+    /// Academy presentation preference; independent of sessions and the saved desktop dock.
+    pub academy_layout: String,
     /// File › Open Recent, newest first (see `recent`).
     pub recent_sessions: Vec<String>,
     pub docking: docking::Workspace,
@@ -147,6 +151,7 @@ pub struct UiState {
 impl Default for UiState {
     fn default() -> Self {
         UiState {
+            academy_layout: "auto".into(),
             recent_sessions: Vec::new(),
             docking: docking::edit_default(),
             mix_docking: docking::mix_default(),
@@ -254,6 +259,7 @@ pub enum Gesture {
 
 pub struct SoundApp {
     pub engine: Engine,
+    pub compact: compact::Runtime,
     /// The session path as of the last frame, and whether the recent list changed since the host
     /// last saved it (see `recent`).
     recent_seen: Option<String>,

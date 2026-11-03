@@ -126,22 +126,29 @@ pub(crate) fn main_area(app: &mut SoundApp, ui: &mut Ui) {
     crate::docking::minimum_body(ui, minimum, |ui| main_area_content(app, ui));
 }
 
+/// A phone projection of the existing session renderer. Optional columns and extra rulers are
+/// omitted for this frame only; the session's desktop view settings stay untouched.
+pub(crate) fn compact_area(app: &mut SoundApp, ui: &mut Ui) {
+    drive_drag(app, ui.ctx());
+    main_area_content(app, ui);
+}
+
 /// Lay out the Edit window: rulers, track headers and lanes, empty-area selection, overlays and both scrollbars.
 fn main_area_content(app: &mut SoundApp, ui: &mut Ui) {
     let t = Tokens::current();
     let full = ui.max_rect();
-    let rulers: Vec<String> = app.engine.session().edit.rulers.clone();
+    let rulers: Vec<String> = if app.compact.active { vec!["min_secs".into()] } else { app.engine.session().edit.rulers.clone() };
     let mut rulers = rulers;
     if app.engine.session().edit.flag("view.ruler.tempo_editor")
         && let Some(i) = rulers.iter().position(|r| r == "tempo")
     {
         rulers.insert(i + 1, "tempo_editor".into());
     }
-    let cols = edit_columns(app.engine.session());
+    let cols = if app.compact.active { Vec::new() } else { edit_columns(app.engine.session()) };
     let titles_h = if cols.is_empty() { 0.0 } else { COLUMN_TITLES_H };
     let rulers_h = rulers.iter().map(|r| ruler_height(r)).sum::<f32>() + 6.0 + titles_h;
     let hscroll_h = 14.0;
-    let hw = header_width(&cols);
+    let hw = if app.compact.active { 88.0 } else { header_width(&cols) };
     let header = Rect::from_min_max(full.min, pos2(full.min.x + hw, full.max.y - hscroll_h));
     let tl = Rect::from_min_max(pos2(full.min.x + hw, full.min.y + rulers_h), pos2(full.max.x - 12.0, full.max.y - hscroll_h));
     let rulers_rect = Rect::from_min_max(pos2(full.min.x, full.min.y), pos2(full.max.x, full.min.y + rulers_h));
@@ -150,8 +157,10 @@ fn main_area_content(app: &mut SoundApp, ui: &mut Ui) {
     ui.painter().rect_filled(full, 0.0, t.window_bg);
     scroll_and_zoom(app, ui, full, tl);
     draw_rulers(app, ui, rulers_rect, tl, &rulers);
-    views_button(app, ui, rulers_rect);
-    column_titles(ui, rulers_rect, &cols);
+    if !app.compact.active {
+        views_button(app, ui, rulers_rect);
+        column_titles(ui, rulers_rect, &cols);
+    }
     if let Some(id) = app.edit_scroll_into_view.take() {
         scroll_into_view(app, id, tl.height());
     }
@@ -160,7 +169,7 @@ fn main_area_content(app: &mut SoundApp, ui: &mut Ui) {
     app.edit_layout.rows.clear();
     let mut content_h = 0.0;
     for t in app.engine.session().tracks.iter().filter(|x| in_edit_window(app.engine.session(), x)) {
-        let h = track_height(t);
+        let h = if app.compact.active { track_height(t).max(88.0) } else { track_height(t) };
         app.edit_layout.rows.push((t.id.0, [full.min.x, y, tl.max.x, y + h]));
         y += h + 1.0;
         content_h += h + 1.0;

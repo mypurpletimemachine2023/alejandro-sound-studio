@@ -63,20 +63,28 @@ pub(super) fn track_row(app: &mut SoundApp, ui: &mut Ui, id: TrackId, row: Rect,
     let s = app.engine.session_arc();
     let Some(track) = s.track(id) else { return };
     let selected = s.edit.selected_tracks.contains(&id);
-    let head = Rect::from_min_max(row.min, pos2(row.min.x + HEADER_W, row.max.y));
+    let head = Rect::from_min_max(row.min, pos2(if app.compact.active { tl.min.x } else { row.min.x + HEADER_W }, row.max.y));
     let (head_bg, lane_bg) = crate::theme::track_backgrounds(track.color, selected, app.ui.track_tint);
     let mut x = head.max.x;
     for &(col, _, _, w) in cols {
         header_column(app, ui, track, col, Rect::from_min_size(pos2(x, row.min.y), vec2(w, row.height())), head_bg);
         x += w;
     }
-    let main_h = track.height.points();
-    let lane = lane_rect(track, row, tl);
+    let main_h = if app.compact.active { row.height() } else { track.height.points() };
+    let lane = if app.compact.active { Rect::from_min_max(pos2(tl.min.x, row.min.y), pos2(tl.max.x, row.max.y)) } else { lane_rect(track, row, tl) };
     ui.painter().rect_filled(head, 0.0, head_bg);
     ui.painter().rect_filled(Rect::from_min_size(head.min, vec2(STRIP_W, head.height())), 0.0, rgb(track.color));
     ui.painter().line_segment([pos2(head.min.x, row.max.y + 0.5), pos2(tl.max.x, row.max.y + 0.5)], Stroke::new(1.0, t.border));
     ui.painter().hline(head.min.x + STRIP_W..=head.max.x, head.min.y + 0.5, Stroke::new(1.0, t.edge_light));
-    track_header(app, ui, track, head, selected, head_bg);
+    if app.compact.active {
+        let response = ui.interact(head, ui.scope_id().with(("compact-track", id.0)), Sense::click());
+        ui.painter().with_clip_rect(head.shrink(6.0)).text(head.center(), Align2::CENTER_CENTER, &track.name, regular(13.0), t.text);
+        if response.clicked() {
+            click_track(app, id, ui.input(|i| i.modifiers), in_edit_window);
+        }
+    } else {
+        track_header(app, ui, track, head, selected, head_bg);
+    }
     // Lane.
     ui.painter().vline(tl.min.x - 0.5, row.y_range(), Stroke::new(1.0, t.border));
     let painter = ui.painter().with_clip_rect(lane.intersect(ui.clip_rect()));

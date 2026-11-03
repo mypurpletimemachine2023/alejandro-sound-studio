@@ -30,6 +30,7 @@ impl SoundApp {
     /// synthetic-input state.
     pub fn new(engine: Engine, player: Option<Player>, services: Services) -> Self {
         SoundApp {
+            compact: crate::compact::Runtime::default(),
             recent_seen: engine.path.clone(),
             recent_changed: false,
             recent_checked: None,
@@ -320,16 +321,22 @@ impl SoundApp {
         let received_synthetic = self.pass_received_synthetic(&ctx);
         shortcuts::handle(self, &ctx);
         self.sample_drop_targets.clear();
-        if !self.native_menu_bar {
-            menus::menu_bar(self, ui);
-        }
-        // With the Mix window in its own native window, the main window keeps Edit.
-        match if self.ui.mix_separate { MainWindow::Edit } else { self.ui.window } {
-            MainWindow::Edit => edit_window::show(self, ui),
-            MainWindow::Mix => mix_window::show(self, ui),
-        }
-        if self.ui.mix_separate {
-            mix_window::show_separate(self, &ctx);
+        crate::compact::begin_frame(self, ui);
+        if self.compact.active {
+            crate::compact::show(self, ui);
+        } else {
+            crate::compact::desktop_choice(self, ui);
+            if !self.native_menu_bar {
+                menus::menu_bar(self, ui);
+            }
+            // The compact projection never replaces or publishes this desktop dock.
+            match if self.ui.mix_separate { MainWindow::Edit } else { self.ui.window } {
+                MainWindow::Edit => edit_window::show(self, ui),
+                MainWindow::Mix => mix_window::show(self, ui),
+            }
+            if self.ui.mix_separate {
+                mix_window::show_separate(self, &ctx);
+            }
         }
         panels::floating(self, &ctx);
         windows::show(self, &ctx);

@@ -6,6 +6,7 @@ impl SoundApp {
     /// one's pixels, so every replacement path bumps the epoch.
     pub(crate) fn document_replaced(&mut self) {
         self.doc_epoch = self.doc_epoch.wrapping_add(1);
+        self.compact.document_replaced();
         // Note indices and gestures belong to the old session's clips (#443); every document
         // replacement (run, Recover, a session the browser read) goes through here.
         self.midi = midi_editor::MidiEditorState::default();
@@ -20,6 +21,9 @@ impl SoundApp {
     /// Every two minutes, copy a modified session to the autosave folder (not while recording).
     /// Timed by the wall clock: egui's stands still while the window is hidden.
     pub(crate) fn autosave(&mut self) {
+        if self.compact.gesture_pending() {
+            return;
+        }
         let Some(dir) = self.autosave_dir.clone() else { return };
         let last = *self.last_autosave.get_or_insert_with(std::time::Instant::now);
         if last.elapsed().as_secs() < 120 || !self.has_unsaved_changes() || self.engine.transport.recording {

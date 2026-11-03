@@ -12,6 +12,16 @@ use wasm_bindgen::JsCast as _;
 
 const CANVAS_ID: &str = "soundcraft_canvas";
 const LOADING_ID: &str = "soundcraft_loading";
+const LAYOUT_KEY: &str = "aca:audio:layout:v1";
+
+fn stored_layout() -> String {
+    let value = web_sys::window().and_then(|w| w.local_storage().ok().flatten()).and_then(|s| s.get_item(LAYOUT_KEY).ok().flatten());
+    match value.as_deref() {
+        Some("compact") => "compact",
+        Some("desktop") => "desktop",
+        _ => "auto",
+    }.into()
+}
 
 pub fn start() {
     eframe::WebLogger::init(log::LevelFilter::Info).ok();
@@ -41,8 +51,10 @@ pub fn start() {
                     }
                     let engine = if query().contains("empty") { Engine::default() } else { soundcraft_engine::demo::demo_engine() };
                     let player = soundcraft_playback::Player::new(Arc::new(engine.session().clone()));
-                    let app = SoundApp::new(engine, Some(player), Services::default());
-                    Ok(Box::new(WebShell { app, inbox: Rc::default(), samples: Rc::default() }))
+                    let mut app = SoundApp::new(engine, Some(player), Services::default());
+                    app.ui.academy_layout = stored_layout();
+                    let persisted_layout = app.ui.academy_layout.clone();
+                    Ok(Box::new(WebShell { app, inbox: Rc::default(), samples: Rc::default(), persisted_layout }))
                 }),
             )
             .await;
@@ -116,6 +128,7 @@ struct WebShell {
     app: SoundApp,
     inbox: Inbox,
     samples: SampleInbox,
+    persisted_layout: String,
 }
 
 impl WebShell {
@@ -210,6 +223,14 @@ impl eframe::App for WebShell {
             self.app.load_sample_bytes(&read, bytes);
         }
         self.app.logic(ctx);
+        if self.persisted_layout != self.app.ui.academy_layout {
+            self.persisted_layout = self.app.ui.academy_layout.clone();
+            if let Some(storage) = web_sys::window().and_then(|w| w.local_storage().ok().flatten()) {
+                if let Err(error) = storage.set_item(LAYOUT_KEY, &self.persisted_layout) {
+                    log::warn!("Could not remember workspace presentation: {error:?}");
+                }
+            }
+        }
         // A prompt opened during this frame becomes a picker on the next one.
         self.take_path_prompt(ctx);
     }
@@ -222,6 +243,7 @@ impl eframe::App for WebShell {
 
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         self.app.ui(ui);
+        crate::academy::record_layout_state(self.app.compact.presentation_state(&self.app.ui.academy_layout));
     }
 }
 
