@@ -96,7 +96,7 @@ pub(super) fn draw_rulers(app: &mut SoundApp, ui: &mut Ui, area: Rect, tl: Rect,
     for (i, id) in rulers.iter().enumerate() {
         let h = ruler_height(id);
         let row = Rect::from_min_max(pos2(tl.min.x, y0), pos2(tl.max.x, y0 + h));
-        let lab = Rect::from_min_max(pos2(area.min.x, y0), pos2(area.min.x + HEADER_W, y0 + h));
+        let lab = Rect::from_min_max(pos2(area.min.x, y0), pos2(if app.compact.active { tl.min.x } else { area.min.x + HEADER_W }, y0 + h));
         y0 += h;
         let painter = ui.painter().with_clip_rect(row);
         ui.painter().text(pos2(lab.max.x - 12.0, lab.center().y), Align2::RIGHT_CENTER, ruler_label(id), bold(11.0), t.ruler_text);

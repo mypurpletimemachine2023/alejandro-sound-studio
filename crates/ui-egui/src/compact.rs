@@ -22,6 +22,7 @@ pub struct Runtime {
     body: Rect,
     touches: Vec<(TouchId, Pos2)>,
     captured: bool,
+    mouse_capture: bool,
     blocked: bool,
     center: Option<Pos2>,
     span: Option<f32>,
@@ -39,6 +40,7 @@ impl Default for Runtime {
             body: Rect::NOTHING,
             touches: Vec::new(),
             captured: false,
+            mouse_capture: false,
             blocked: false,
             center: None,
             span: None,
@@ -101,10 +103,23 @@ pub(crate) fn raw_input(app: &mut SoundApp, ctx: &egui::Context, raw: &mut egui:
     if !app.compact.active {
         return;
     }
+    if app.dialogs.open.is_some() {
+        if app.compact.checkpoint.is_some() {
+            cancel(app, ctx);
+        }
+        app.compact.touches.clear();
+        app.compact.captured = false;
+        app.compact.mouse_capture = false;
+        app.compact.blocked = false;
+        app.compact.center = None;
+        app.compact.span = None;
+        return;
+    }
     if !raw.focused && (app.compact.captured || !app.compact.touches.is_empty()) {
         cancel(app, ctx);
         app.compact.touches.clear();
         app.compact.captured = false;
+        app.compact.mouse_capture = false;
         app.compact.blocked = false;
         app.compact.center = None;
         app.compact.span = None;
@@ -114,6 +129,48 @@ pub(crate) fn raw_input(app: &mut SoundApp, ctx: &egui::Context, raw: &mut egui:
     let mut suppress = app.compact.blocked;
     let mut pan = Vec2::ZERO;
     let mut zoom = 1.0_f32;
+    // Mouse/pen cancellation uses the same checkpoint, and Navigate also works with a
+    // single-pointer drag. Touch-generated pointer events are handled only by the contact path.
+    if !raw.events.iter().any(|event| matches!(event, egui::Event::Touch { .. })) && app.compact.touches.is_empty() {
+        for event in &raw.events {
+            match event {
+                egui::Event::PointerButton { pos, button: egui::PointerButton::Primary, pressed: true, .. } => {
+                    if capturable(app, ctx, *pos) {
+                        app.compact.mouse_capture = true;
+                        app.compact.captured = true;
+                        app.compact.checkpoint = Some((app.doc_epoch, app.engine.interaction_checkpoint()));
+                        app.compact.center = Some(*pos);
+                        if app.compact.navigate && app.compact.drawer == Drawer::None {
+                            cancel(app, ctx);
+                            suppress = true;
+                        }
+                    }
+                }
+                egui::Event::PointerMoved(pos) if app.compact.mouse_capture && app.compact.navigate && app.compact.drawer == Drawer::None => {
+                    if let Some(before) = app.compact.center {
+                        pan += *pos - before;
+                    }
+                    app.compact.center = Some(*pos);
+                    suppress = true;
+                }
+                egui::Event::PointerButton { button: egui::PointerButton::Primary, pressed: false, .. } if app.compact.mouse_capture => {
+                    suppress |= app.compact.navigate && app.compact.drawer == Drawer::None;
+                    app.compact.checkpoint = None;
+                    app.compact.mouse_capture = false;
+                    app.compact.captured = false;
+                    app.compact.center = None;
+                }
+                egui::Event::PointerGone if app.compact.mouse_capture => {
+                    cancel(app, ctx);
+                    app.compact.mouse_capture = false;
+                    app.compact.captured = false;
+                    app.compact.center = None;
+                    suppress = true;
+                }
+                _ => {}
+            }
+        }
+    }
     for event in &raw.events {
         let egui::Event::Touch { id, phase, pos, .. } = event else { continue };
         let previous = app.compact.touches.iter().position(|(other, _)| other == id);
@@ -122,7 +179,7 @@ pub(crate) fn raw_input(app: &mut SoundApp, ctx: &egui::Context, raw: &mut egui:
                 app.compact.center = None;
                 app.compact.span = None;
                 if app.compact.touches.is_empty() {
-                    app.compact.captured = app.compact.body.contains(*pos);
+                    app.compact.captured = capturable(app, ctx, *pos);
                     if app.compact.captured {
                         app.compact.checkpoint = Some((app.doc_epoch, app.engine.interaction_checkpoint()));
                     }
@@ -185,6 +242,14 @@ pub(crate) fn raw_input(app: &mut SoundApp, ctx: &egui::Context, raw: &mut egui:
             app.compact.span = None;
         }
     }
+    if app.compact.captured && !app.compact.blocked && !app.compact.touches.is_empty() && raw.events.iter().any(|e| matches!(e, egui::Event::PointerGone)) {
+        cancel(app, ctx);
+        app.compact.touches.clear();
+        app.compact.captured = false;
+        app.compact.center = None;
+        app.compact.span = None;
+        suppress = true;
+    }
     if suppress {
         raw.events.retain(|e| !pointer_event(e));
     }
@@ -197,6 +262,10 @@ pub(crate) fn raw_input(app: &mut SoundApp, ctx: &egui::Context, raw: &mut egui:
     if zoom.is_finite() && (zoom - 1.0).abs() > 0.001 {
         let _ = app.engine.execute("view.zoom_by", &json!({"factor": zoom, "x": (app.compact.body.width() * 0.5).max(0.0)}));
     }
+}
+
+fn capturable(app: &SoundApp, ctx: &egui::Context, pos: Pos2) -> bool {
+    app.compact.body.contains(pos) && ctx.layer_id_at(pos).is_none_or(|layer| layer.order == egui::Order::Background)
 }
 
 fn pointer_event(event: &egui::Event) -> bool {
@@ -300,8 +369,10 @@ mod tests {
 
 pub(crate) fn desktop_choice(app: &mut SoundApp, ui: &mut egui::Ui) {
     app.compact.controls.clear();
+    app.compact.body = Rect::NOTHING;
     egui::Panel::top("academy_audio_workspace").exact_size(44.0).show(ui, |ui| {
-        ui.menu_button("Workspace", |ui| preference_menu(app, ui));
+        let response = ui.menu_button("Workspace", |ui| preference_menu(app, ui)).response;
+        app.compact.controls.insert("Workspace", [response.rect.min.x, response.rect.min.y, response.rect.max.x, response.rect.max.y]);
     });
 }
 
@@ -363,7 +434,7 @@ pub(crate) fn show(app: &mut SoundApp, ui: &mut egui::Ui) {
         });
         egui::ScrollArea::horizontal().id_salt("academy_audio_compact_tools").show(ui, |ui| {
             ui.horizontal(|ui| {
-                ui.menu_button("Tools", |ui| {
+                let response = ui.menu_button("Tools", |ui| {
                     for (label, tool) in [("Select region", "selector"), ("Trim clip", "trim"), ("Move clip", "grabber"), ("Smart tool", "smart")] {
                         if button(ui, label, 150.0).clicked() {
                             let _ = app.run("edit.tool", json!({"tool": tool}));
@@ -377,9 +448,12 @@ pub(crate) fn show(app: &mut SoundApp, ui: &mut egui::Ui) {
                             ui.close();
                         }
                     }
-                });
+                }).response;
+                app.compact.controls.insert("Tools", [response.rect.min.x, response.rect.min.y, response.rect.max.x, response.rect.max.y]);
                 for (label, drawer) in [("Tracks", Drawer::Tracks), ("Clips", Drawer::Clips), ("Mixer", Drawer::Mixer)] {
-                    if button(ui, label, 52.0).clicked() {
+                    let response = button(ui, label, 52.0);
+                    app.compact.controls.insert(label, [response.rect.min.x, response.rect.min.y, response.rect.max.x, response.rect.max.y]);
+                    if response.clicked() {
                         app.compact.drawer = if app.compact.drawer == drawer { Drawer::None } else { drawer };
                     }
                 }
@@ -398,6 +472,10 @@ pub(crate) fn show(app: &mut SoundApp, ui: &mut egui::Ui) {
                 app.compact.drawer = Drawer::None;
             }
         });
+    }
+    if ui.available_width() < 160.0 || ui.available_height() < 64.0 {
+        ui.label("Close the keyboard to resume the workspace.");
+        return;
     }
     match app.compact.drawer {
         Drawer::None => crate::edit_window::compact_area(app, ui),

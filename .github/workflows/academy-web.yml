@@ -47,6 +47,10 @@ jobs:
           rustup default 1.95.0
       - name: Exercise self-contained copies and immutable revert checkpoints
         run: cargo test --locked -p soundcraft-engine browser_ --lib
+      - name: Exercise standalone compact presentation policy
+        run: |
+          rustc --edition 2024 --test crates/ui-egui/src/compact_policy.rs -o "$RUNNER_TEMP/academy-compact-policy"
+          "$RUNNER_TEMP/academy-compact-policy"
   build-web:
     needs: source-audit
     runs-on: ubuntu-24.04

@@ -323,7 +323,7 @@ impl SoundApp {
         self.sample_drop_targets.clear();
         crate::compact::begin_frame(self, ui);
         if self.compact.active {
-            crate::compact::show(self, ui);
+            ui.add_enabled_ui(self.dialogs.open.is_none(), |ui| crate::compact::show(self, ui));
         } else {
             crate::compact::desktop_choice(self, ui);
             if !self.native_menu_bar {

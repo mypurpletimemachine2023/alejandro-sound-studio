@@ -493,12 +493,29 @@ pub fn show(app: &mut SoundApp, ctx: &egui::Context) {
     .to_string();
     let enter = ctx.input(|i| i.key_pressed(egui::Key::Enter));
     let esc = ctx.input(|i| i.key_pressed(egui::Key::Escape));
-    egui::Window::new(egui::RichText::new(&title).font(bold(13.0)))
+    let compact = app.compact.active;
+    let available = ctx.content_rect().size();
+    let mut window = egui::Window::new(egui::RichText::new(&title).font(bold(13.0)))
         .collapsible(false)
-        .resizable(false)
-        .anchor(Align2::CENTER_CENTER, vec2(0.0, -80.0))
+        .resizable(false);
+    window = if compact {
+        window.anchor(Align2::CENTER_CENTER, vec2(0.0, 0.0))
+            .default_width((available.x - 32.0).clamp(160.0, 420.0))
+            .max_width((available.x - 24.0).max(160.0))
+            .max_height((available.y - 24.0).max(60.0))
+            .vscroll(true)
+            .hscroll(true)
+    } else {
+        window.anchor(Align2::CENTER_CENTER, vec2(0.0, -80.0))
+    };
+    window
         .show(ctx, |ui| {
             ui.spacing_mut().item_spacing = vec2(8.0, 8.0);
+            if compact {
+                ui.spacing_mut().interact_size.y = 44.0;
+                ui.spacing_mut().text_edit_width = (available.x - 120.0).clamp(100.0, 260.0);
+                ui.set_max_width((available.x - 48.0).max(140.0));
+            }
             match &mut d {
                 Dialog::NewTracks { count, format, kind, timebase, name } => {
                     if let Some(cmd) = new_tracks_form(ui, count, format, kind, timebase, name, enter) {
