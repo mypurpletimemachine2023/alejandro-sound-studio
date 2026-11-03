@@ -24,7 +24,7 @@ pub const UI_COMMANDS: &[(&str, &str, &str, Option<&str>)] = &[
     ("window.narrow_mix", "Narrow Mix", "View > Narrow Mix", Some("Cmd+Alt+M")),
     ("window.session_info", "Session Info", "", None),
     ("window.audio_health", "Session Audio Health", "", None),
-    ("window.about", "About ACA Sound Studio", "", None),
+    ("window.about", "About ACA Audio Lab", "", None),
     ("window.close", "Close Window", "Window > Close Window", Some("Cmd+W")),
     ("window.hide_floating", "Hide All Floating Windows", "Window > Hide All Floating Windows", Some("Cmd+Ctrl+W")),
     ("window.midi_editor", "MIDI Editor", "Window > MIDI Editor", None),
@@ -229,8 +229,8 @@ pub fn menu_bar(app: &mut SoundApp, ui: &mut egui::Ui) {
         ui,
         |ui| {
             egui::MenuBar::new().ui(ui, |ui| {
-                ui.menu_button("ACA Sound Studio", |ui| {
-                    if ui.button("About ACA Sound Studio").clicked() {
+                ui.menu_button("ACA Audio Lab", |ui| {
+                    if ui.button("About ACA Audio Lab").clicked() {
                         app.ui.show_about = true;
                     }
                     if ui.button("Check for Updates…").clicked() {

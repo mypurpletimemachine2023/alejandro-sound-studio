@@ -53,3 +53,5 @@ ACA derivative: the ArtCraft trademark artwork under docs/brand has been exclude
 | `aca_build_web.py` generated `dist/web/favicon.svg` | ACA fork contributors | original procedural waveform geometry | MIT OR Apache-2.0 |
 
 | `apps/soundcraft-web/index.html` inline ACA favicon | ACA fork contributors | Original procedural SVG geometry and system type | MIT OR Apache-2.0 |
+
+| `apps/soundcraft-web/academy-bridge.js` | Academy appearance and tutorial bridge | Alejandro Creative Academy | Original source | MIT OR Apache-2.0 |

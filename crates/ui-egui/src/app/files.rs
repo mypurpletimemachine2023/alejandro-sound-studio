@@ -105,9 +105,9 @@ impl SoundApp {
         self.panic_rev = self.engine.revision;
         let saved = self.engine.is_dirty() && self.write_autosave();
         self.ui.status = if saved {
-            "SoundCraft hit an internal error (see the log). Your changes were autosaved: save them, then restart SoundCraft.".into()
+            "ACA Audio Lab hit an internal error (see the log). Your changes were autosaved: save them, then restart ACA Audio Lab.".into()
         } else {
-            "SoundCraft hit an internal error (see the log). Restart SoundCraft to be safe.".into()
+            "ACA Audio Lab hit an internal error (see the log). Restart ACA Audio Lab to be safe.".into()
         };
     }
 

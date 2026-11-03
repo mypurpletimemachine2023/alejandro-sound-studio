@@ -461,7 +461,9 @@ pub fn apply(ctx: &egui::Context, light: bool) {
     v.extreme_bg_color = t.slot_bg;
     v.faint_bg_color = t.panel_bg2;
     v.selection.bg_fill = t.accent;
-    if t.accent == Color32::from_rgb(217, 181, 103) { v.selection.stroke.color = Color32::from_rgb(24, 14, 42); }
+    if t.accent == Color32::from_rgb(217, 181, 103) {
+        v.selection.stroke.color = Color32::from_rgb(24, 14, 42);
+    }
     v.widgets.inactive.weak_bg_fill = t.button;
     v.widgets.inactive.bg_fill = t.button;
     v.widgets.hovered.weak_bg_fill = t.button_hi;
