@@ -214,13 +214,17 @@ impl eframe::App for WebShell {
         }
         self.take_drops(ctx);
         self.take_path_prompt(ctx);
-        let pending = std::mem::take(&mut *self.inbox.borrow_mut());
-        for (purpose, name, bytes) in pending {
-            self.handle(purpose, name, bytes);
-        }
-        let samples = std::mem::take(&mut *self.samples.borrow_mut());
-        for (read, bytes) in samples {
-            self.app.load_sample_bytes(&read, bytes);
+        // Do not fold an unrelated asynchronous import into a touch checkpoint that could
+        // subsequently be cancelled. The queue remains intact until the owned gesture ends.
+        if !self.app.compact.gesture_pending() {
+            let pending = std::mem::take(&mut *self.inbox.borrow_mut());
+            for (purpose, name, bytes) in pending {
+                self.handle(purpose, name, bytes);
+            }
+            let samples = std::mem::take(&mut *self.samples.borrow_mut());
+            for (read, bytes) in samples {
+                self.app.load_sample_bytes(&read, bytes);
+            }
         }
         self.app.logic(ctx);
         if self.persisted_layout != self.app.ui.academy_layout {

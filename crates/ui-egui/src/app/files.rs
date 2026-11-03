@@ -7,6 +7,13 @@ impl SoundApp {
     pub(crate) fn document_replaced(&mut self) {
         self.doc_epoch = self.doc_epoch.wrapping_add(1);
         self.compact.document_replaced();
+        self.gesture = None;
+        self.pointer_down = false;
+        if let Some(ctx) = &self.docking_context {
+            ctx.stop_dragging();
+            ctx.input_mut(|input| input.pointer = Default::default());
+            egui::DragAndDrop::clear_payload(ctx);
+        }
         // Note indices and gestures belong to the old session's clips (#443); every document
         // replacement (run, Recover, a session the browser read) goes through here.
         self.midi = midi_editor::MidiEditorState::default();

@@ -177,7 +177,9 @@ impl SoundApp {
         // polling are per host frame.
         if ctx.current_pass_index() == 0 {
             bounce::step(self, ctx);
-            import::step(self, ctx);
+            if !self.compact.gesture_pending() {
+                import::step(self, ctx);
+            }
             updates_ui::tick(self, ctx);
         }
         if !self.pointer_down {

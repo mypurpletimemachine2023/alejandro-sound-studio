@@ -73,10 +73,18 @@ impl Runtime {
 
     pub fn document_replaced(&mut self) {
         self.checkpoint = None;
+        self.touches.clear();
+        self.captured = false;
+        self.mouse_capture = false;
+        self.blocked = false;
+        self.center = None;
+        self.span = None;
+        self.body = Rect::NOTHING;
     }
 }
 
 pub(crate) fn begin_frame(app: &mut SoundApp, ui: &egui::Ui) {
+    app.docking_context = Some(ui.ctx().clone());
     app.compact.viewport = ui.ctx().content_rect();
     let size = ui.ctx().content_rect().size();
     let busy = app.gesture.is_some() || ui.input(|i| i.pointer.any_down()) || !app.compact.touches.is_empty();
