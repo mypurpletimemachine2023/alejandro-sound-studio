@@ -27,6 +27,7 @@ pub struct Runtime {
     center: Option<Pos2>,
     span: Option<f32>,
     checkpoint: Option<(u64, soundcraft_engine::InteractionCheckpoint)>,
+    release_pending: bool,
 }
 
 impl Default for Runtime {
@@ -45,6 +46,7 @@ impl Default for Runtime {
             center: None,
             span: None,
             checkpoint: None,
+            release_pending: false,
         }
     }
 }
@@ -68,7 +70,11 @@ impl Runtime {
     }
 
     pub fn gesture_pending(&self) -> bool {
-        self.checkpoint.is_some()
+        self.checkpoint.is_some() || !self.touches.is_empty() || self.mouse_capture || self.release_pending
+    }
+
+    pub(crate) fn end_ui_frame(&mut self) {
+        self.release_pending = false;
     }
 
     pub fn document_replaced(&mut self) {
@@ -80,6 +86,7 @@ impl Runtime {
         self.center = None;
         self.span = None;
         self.body = Rect::NOTHING;
+        self.release_pending = false;
     }
 }
 
@@ -92,6 +99,7 @@ pub(crate) fn begin_frame(app: &mut SoundApp, ui: &egui::Ui) {
 }
 
 fn cancel(app: &mut SoundApp, ctx: &egui::Context) {
+    app.compact.release_pending = true;
     if let Some((epoch, checkpoint)) = app.compact.checkpoint.take()
         && epoch == app.doc_epoch
     {
@@ -162,6 +170,7 @@ pub(crate) fn raw_input(app: &mut SoundApp, ctx: &egui::Context, raw: &mut egui:
                     suppress = true;
                 }
                 egui::Event::PointerButton { button: egui::PointerButton::Primary, pressed: false, .. } if app.compact.mouse_capture => {
+                    app.compact.release_pending = true;
                     suppress |= app.compact.navigate && app.compact.drawer == Drawer::None;
                     app.compact.checkpoint = None;
                     app.compact.mouse_capture = false;
@@ -244,6 +253,7 @@ pub(crate) fn raw_input(app: &mut SoundApp, ctx: &egui::Context, raw: &mut egui:
             // A normal release still reaches the existing commit path. A navigation release is
             // suppressed for this entire input batch, even after the last contact disappears.
             app.compact.checkpoint = None;
+            app.compact.release_pending = true;
             app.compact.captured = false;
             app.compact.blocked = false;
             app.compact.center = None;
@@ -403,7 +413,8 @@ pub(crate) fn show(app: &mut SoundApp, ui: &mut egui::Ui) {
                     menus::invoke_menu(app, command, "");
                 }
             }
-            let response = ui.menu_button("More", |ui| {
+            let response = button(ui, "More", 54.0);
+            egui::Popup::menu(&response).show(|ui| {
                 preference_menu(app, ui);
                 ui.separator();
                 for (label, command) in [("Import audio", "file.import_audio"), ("Export audio", "file.bounce_mix"), ("New session", "session.new")] {
@@ -412,7 +423,7 @@ pub(crate) fn show(app: &mut SoundApp, ui: &mut egui::Ui) {
                         ui.close();
                     }
                 }
-            }).response;
+            });
             app.compact.controls.insert("More", [response.rect.min.x, response.rect.min.y, response.rect.max.x, response.rect.max.y]);
         });
         ui.horizontal(|ui| {
@@ -442,7 +453,8 @@ pub(crate) fn show(app: &mut SoundApp, ui: &mut egui::Ui) {
         });
         egui::ScrollArea::horizontal().id_salt("academy_audio_compact_tools").show(ui, |ui| {
             ui.horizontal(|ui| {
-                let response = ui.menu_button("Tools", |ui| {
+                let response = button(ui, "Tools", 54.0);
+                egui::Popup::menu(&response).show(|ui| {
                     for (label, tool) in [("Select region", "selector"), ("Trim clip", "trim"), ("Move clip", "grabber"), ("Smart tool", "smart")] {
                         if button(ui, label, 150.0).clicked() {
                             let _ = app.run("edit.tool", json!({"tool": tool}));
@@ -456,7 +468,7 @@ pub(crate) fn show(app: &mut SoundApp, ui: &mut egui::Ui) {
                             ui.close();
                         }
                     }
-                }).response;
+                });
                 app.compact.controls.insert("Tools", [response.rect.min.x, response.rect.min.y, response.rect.max.x, response.rect.max.y]);
                 for (label, drawer) in [("Tracks", Drawer::Tracks), ("Clips", Drawer::Clips), ("Mixer", Drawer::Mixer)] {
                     let response = button(ui, label, 52.0);
@@ -485,10 +497,17 @@ pub(crate) fn show(app: &mut SoundApp, ui: &mut egui::Ui) {
         ui.label("Close the keyboard to resume the workspace.");
         return;
     }
+    // Top panels consume available space, but the original root's max_rect still includes
+    // those panels. The session painter intentionally fills its entire max_rect. Give every
+    // workspace/drawer its own bounded child so it cannot paint over the pinned controls.
+    let body_rect = ui.available_rect_before_wrap();
+    let mut body = ui.new_child(egui::UiBuilder::new().max_rect(body_rect));
+    body.set_clip_rect(body_rect.intersect(ui.clip_rect()));
+    app.compact.body = body_rect;
     match app.compact.drawer {
-        Drawer::None => crate::edit_window::compact_area(app, ui),
-        Drawer::Tracks => panels::tracks_and_groups(app, ui),
-        Drawer::Clips => panels::clip_list(app, ui),
-        Drawer::Mixer => crate::mix_window::content(app, ui),
+        Drawer::None => crate::edit_window::compact_area(app, &mut body),
+        Drawer::Tracks => panels::tracks_and_groups(app, &mut body),
+        Drawer::Clips => panels::clip_list(app, &mut body),
+        Drawer::Mixer => crate::mix_window::content(app, &mut body),
     }
 }

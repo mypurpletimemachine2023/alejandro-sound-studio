@@ -352,6 +352,9 @@ impl SoundApp {
         updates_ui::show(self, &ctx);
         // The sampler's drop rects are current now, so route any captured drop in this pass.
         self.route_dropped_files();
+        // Release/cancel input has now reached the native widgets and commit/cancel path.
+        // Only the next logic tick may apply unrelated asynchronous imports.
+        self.compact.end_ui_frame();
         // The pass that actually received the injected events has already dispatched their widget
         // side effects, even when it then asks for another layout pass. `received_synthetic` was
         // captured before menus and widgets, so a widget that consumed the event from InputState
