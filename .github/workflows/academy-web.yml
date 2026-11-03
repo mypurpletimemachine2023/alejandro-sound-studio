@@ -80,6 +80,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          python3 -m unittest test_aca_packaging.py
           python3 aca_build_web.py
       - name: Include licenses and exact source identity
         shell: bash
